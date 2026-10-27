@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Xpression NextGen | Scenarios</title>
+<link rel="stylesheet" href="styles.css"><script src="common.js"></script><script src="app.js"></script></head>
+<body><main>
+<h1 data-testid="page-title">What-if Scenarios</h1>
+<div class="card"><form id="sc-form" class="row" novalidate>
+  <div><label for="sc-name">Scenario name</label><input id="sc-name" data-testid="scenario-name"><div class="field-error" data-testid="error-name"></div></div>
+  <div><label for="uplift">Demand uplift %</label><input id="uplift" type="number" data-testid="uplift"><div class="field-error" data-testid="error-uplift_pct"></div></div>
+  <div style="flex:0"><button class="primary" type="submit" data-testid="create-scenario">Create</button></div></form></div>
+<div class="card"><table data-testid="scenarios-table"><thead><tr><th>Name</th><th>Uplift</th><th>Baseline</th><th>Scenario</th><th>Delta</th><th></th></tr></thead><tbody></tbody></table>
+<p class="muted" data-testid="no-scenarios" hidden>No scenarios yet.</p></div></main>
+<script>
+async function load() { const { data } = await API.get("/api/scenarios"); const tbody = $('[data-testid="scenarios-table"] tbody'); tbody.innerHTML = "";
+  data.items.forEach(s => tbody.append(el("tr", { testid: "scenario-" + s.name },
+    el("td", {}, s.name), el("td", {}, s.uplift_pct + "%"), el("td", { testid: "baseline" }, s.baseline_total.toLocaleString("en-US")),
+    el("td", { testid: "scenario-total" }, s.scenario_total.toLocaleString("en-US")), el("td", { testid: "delta" }, (s.delta > 0 ? "+" : "") + s.delta.toLocaleString("en-US")),
+    el("td", {}, el("button", { class: "secondary", testid: "delete-" + s.name, onclick: async () => { await API.del(`/api/scenarios/${s.id}`); toast("Scenario deleted"); load(); } }, "Delete")))));
+  $('[data-testid="no-scenarios"]').hidden = data.items.length > 0; }
+if (shell("scenarios")) {
+  $("#sc-form").addEventListener("submit", async e => { e.preventDefault(); clearErrors(e.target);
+    const name = $("#sc-name").value.trim(); if (!name) return showError("name", "Scenario name is required");
+    const raw = $("#uplift").value; const r = await API.post("/api/scenarios", { name, uplift_pct: raw === "" ? null : Number(raw) });
+    if (!r.ok) return showError(r.data.field || "name", r.data.error);
+    toast(`Scenario "${r.data.name}" created`); e.target.reset(); load(); });
+  load();
+}
+</script></body></html>

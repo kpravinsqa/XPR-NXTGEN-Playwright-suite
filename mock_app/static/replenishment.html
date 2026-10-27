@@ -1,0 +1,42 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Xpression NextGen | Replenishment</title>
+<link rel="stylesheet" href="styles.css"><script src="common.js"></script><script src="app.js"></script></head>
+<body><main>
+<h1 data-testid="page-title">Replenishment Recommendations</h1>
+<div class="card"><div class="row"><div><label for="status">Status</label><select id="status" data-testid="status-filter"><option value="">All</option><option>PROPOSED</option><option>APPROVED</option><option>REJECTED</option></select></div>
+<div><p>Approved PO value: <strong data-testid="approved-value"></strong></p></div></div>
+<table data-testid="recs-table"><thead><tr><th></th><th>SKU</th><th>Supplier</th><th>Required</th><th>MOQ</th><th>Recommended</th><th>Value</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+<button class="primary" data-testid="approve-selected" id="approve-btn" disabled>Approve selected</button></div>
+<div class="card" data-testid="reject-panel" id="reject-panel" hidden><h2>Reject recommendation <span data-testid="reject-id"></span></h2>
+<label for="reject-reason">Reason</label><input id="reject-reason" data-testid="reject-reason"><div class="field-error" data-testid="error-reason"></div>
+<button class="danger" data-testid="confirm-reject" id="confirm-reject">Confirm reject</button></div>
+</main>
+<script>
+let rejecting = null;
+const sel = () => [...document.querySelectorAll("tbody input[type=checkbox]:checked")].map(c => Number(c.value));
+async function load() {
+  const s = $("#status").value; const { data } = await API.get("/api/replenishment" + (s ? "?status=" + s : ""));
+  $('[data-testid="approved-value"]').textContent = money(data.approved_value, "USD");
+  const tbody = $('[data-testid="recs-table"] tbody'); tbody.innerHTML = "";
+  data.items.forEach(r => { const editable = r.status === "PROPOSED" && !isViewer();
+    const qty = el("input", { type: "number", value: r.recommended_qty, testid: "qty-" + r.id, style: "width:90px", disabled: !editable });
+    qty.addEventListener("change", async () => { const res = await API.put(`/api/replenishment/${r.id}`, { qty: Number(qty.value) });
+      if (!res.ok) { toast(res.data.error, "error"); qty.value = r.recommended_qty; return; } toast("Quantity updated"); load(); });
+    tbody.append(el("tr", { testid: "rec-" + r.id },
+      el("td", {}, editable ? el("input", { type: "checkbox", value: r.id, testid: "select-" + r.id, style: "width:auto", onchange: () => { $("#approve-btn").disabled = sel().length === 0; } }) : ""),
+      el("td", {}, r.sku), el("td", {}, r.supplier), el("td", { testid: "required" }, String(r.required_qty)), el("td", {}, String(r.moq)),
+      el("td", {}, qty), el("td", { testid: "value" }, money(r.value, "USD")), el("td", {}, r.due),
+      el("td", {}, el("span", { class: "status", testid: "status" }, r.status), r.po_number ? el("div", { class: "muted", testid: "po" }, r.po_number) : ""),
+      el("td", {}, editable ? el("button", { class: "secondary", testid: "reject-" + r.id, onclick: () => { rejecting = r.id; $('[data-testid="reject-id"]').textContent = "#" + r.id; $("#reject-panel").hidden = false; } }, "Reject") : ""))); });
+  $("#approve-btn").disabled = true;
+}
+if (shell("replenishment")) {
+  $("#status").addEventListener("change", load);
+  $("#approve-btn").addEventListener("click", async () => { const ids = sel(); const r = await API.post("/api/replenishment/approve", { ids });
+    toast(r.ok ? `${r.data.approved.length} recommendation(s) approved` : r.data.error, r.ok ? "success" : "error"); load(); });
+  $("#confirm-reject").addEventListener("click", async () => { clearErrors($("#reject-panel"));
+    const r = await API.post(`/api/replenishment/${rejecting}/reject`, { reason: $("#reject-reason").value });
+    if (!r.ok) return showError(r.data.field || "reason", r.data.error);
+    toast(`Recommendation #${rejecting} rejected`); $("#reject-panel").hidden = true; $("#reject-reason").value = ""; load(); });
+  load();
+}
+</script></body></html>

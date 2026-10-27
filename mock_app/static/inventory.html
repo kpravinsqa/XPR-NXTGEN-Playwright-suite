@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Xpression NextGen | Inventory Policy</title>
+<link rel="stylesheet" href="styles.css"><script src="common.js"></script><script src="app.js"></script></head>
+<body><main>
+<h1 data-testid="page-title">Inventory Policy Calculator</h1>
+<div class="card"><form id="policy-form" novalidate><div class="row">
+  <div><label for="avg">Avg daily demand</label><input id="avg" type="number" data-testid="avg_daily_demand"><div class="field-error" data-testid="error-avg_daily_demand"></div></div>
+  <div><label for="sd">Demand std. deviation</label><input id="sd" type="number" data-testid="demand_std_dev"><div class="field-error" data-testid="error-demand_std_dev"></div></div>
+  <div><label for="lt">Lead time (days)</label><input id="lt" type="number" data-testid="lead_time_days"><div class="field-error" data-testid="error-lead_time_days"></div></div>
+  <div><label for="sl">Service level</label><select id="sl" data-testid="service_level"><option value="90">90%</option><option value="95" selected>95%</option><option value="98">98%</option><option value="99">99%</option></select><div class="field-error" data-testid="error-service_level"></div></div>
+</div><div class="field-error" data-testid="error-form"></div>
+<button class="primary" type="submit" data-testid="calculate">Calculate</button></form></div>
+<div class="grid" data-testid="results" hidden>
+  <div class="card"><div class="muted">Z-score</div><div class="kpi" data-testid="z"></div></div>
+  <div class="card"><div class="muted">Safety stock (units)</div><div class="kpi" data-testid="safety-stock"></div></div>
+  <div class="card"><div class="muted">Reorder point (units)</div><div class="kpi" data-testid="reorder-point"></div></div>
+</div></main>
+<script>
+if (shell("inventory")) $("#policy-form").addEventListener("submit", async e => { e.preventDefault(); clearErrors(e.target);
+  const v = id => $("#" + id).value === "" ? null : $("#" + id).value;
+  const r = await API.post("/api/inventory/policy", { avg_daily_demand: v("avg"), demand_std_dev: v("sd"), lead_time_days: v("lt"), service_level: v("sl") });
+  if (!r.ok) { $('[data-testid="results"]').hidden = true; return showError(r.data.field || "form", r.data.error); }
+  $('[data-testid="z"]').textContent = r.data.z; $('[data-testid="safety-stock"]').textContent = r.data.safety_stock;
+  $('[data-testid="reorder-point"]').textContent = r.data.reorder_point; $('[data-testid="results"]').hidden = false; });
+</script></body></html>

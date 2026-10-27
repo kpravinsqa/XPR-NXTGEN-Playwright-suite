@@ -1,0 +1,17 @@
+{
+  "policy_cases": [
+    {"id": "sl90", "avg": 100, "std": 20, "lead_time": 9, "service_level": 90, "z": 1.28, "safety_stock": 77, "reorder_point": 977},
+    {"id": "sl95", "avg": 100, "std": 20, "lead_time": 9, "service_level": 95, "z": 1.65, "safety_stock": 99, "reorder_point": 999},
+    {"id": "sl98", "avg": 100, "std": 20, "lead_time": 9, "service_level": 98, "z": 2.05, "safety_stock": 123, "reorder_point": 1023},
+    {"id": "sl99", "avg": 100, "std": 20, "lead_time": 9, "service_level": 99, "z": 2.33, "safety_stock": 140, "reorder_point": 1040},
+    {"id": "zero-variability", "avg": 50, "std": 0, "lead_time": 14, "service_level": 95, "z": 1.65, "safety_stock": 0, "reorder_point": 700},
+    {"id": "lead-time-1-min", "avg": 40, "std": 10, "lead_time": 1, "service_level": 95, "z": 1.65, "safety_stock": 17, "reorder_point": 57},
+    {"id": "lead-time-365-max", "avg": 2, "std": 1, "lead_time": 365, "service_level": 95, "z": 1.65, "safety_stock": 32, "reorder_point": 762}
+  ],
+  "invalid_inputs": [
+    {"id": "lead-time-0", "avg": 10, "std": 2, "lead_time": 0, "field": "lead_time_days", "error": "Lead time must be between 1 and 365 days"},
+    {"id": "lead-time-366", "avg": 10, "std": 2, "lead_time": 366, "field": "lead_time_days", "error": "Lead time must be between 1 and 365 days"},
+    {"id": "negative-demand", "avg": -1, "std": 2, "lead_time": 5, "field": "avg_daily_demand", "error": "Demand inputs cannot be negative"},
+    {"id": "negative-std", "avg": 10, "std": -2, "lead_time": 5, "field": "demand_std_dev", "error": "Demand inputs cannot be negative"}
+  ]
+}

@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Xpression NextGen | Demand Workbench</title>
+<link rel="stylesheet" href="styles.css"><script src="common.js"></script><script src="app.js"></script>
+<style>.cell{width:80px;text-align:right}.cell.overridden{background:#fff4d6;font-weight:600}.cell:disabled{background:#eef0f3}</style></head>
+<body><main>
+<h1 data-testid="page-title">Demand Workbench</h1>
+<div class="card"><div class="row">
+  <div><label for="location">Location</label><select id="location" data-testid="location-filter"><option value="">All locations</option><option>DC-PUNE</option><option>DC-MUMBAI</option></select></div>
+  <div><label for="reason">Reason code for next override</label><select id="reason" data-testid="reason-code"><option value="">— none —</option></select></div>
+  <div><p class="muted" data-testid="rules"></p></div>
+</div></div>
+<div class="card" style="overflow-x:auto"><table data-testid="demand-grid"><thead><tr id="head"><th>SKU</th><th>Location</th><th>Row</th></tr></thead><tbody></tbody></table>
+<p>Grand total (final): <strong data-testid="grand-total"></strong></p></div>
+</main>
+<script>
+let META;
+async function load() {
+  const loc = $("#location").value; const { data } = await API.get("/api/demand" + (loc ? "?location=" + loc : ""));
+  const tbody = $('[data-testid="demand-grid"] tbody'); tbody.innerHTML = "";
+  data.items.forEach(it => {
+    const stat = el("tr", { testid: `stat-${it.key}` }, el("td", { rowspan: 2 }, it.sku), el("td", { rowspan: 2 }, it.location), el("td", { class: "muted" }, "Statistical"),
+      ...META.weeks.map(w => el("td", {}, String(it.statistical[w]))), el("td", { testid: "total-stat" }, String(it.total_statistical)));
+    const fin = el("tr", { testid: `final-${it.key}` }, el("td", {}, "Final"),
+      ...META.weeks.map(w => { const frozen = META.frozen_weeks.includes(w);
+        const inp = el("input", { class: "cell" + (it.overrides[w] ? " overridden" : ""), value: it.final[w], testid: `cell-${it.key}-${w}`,
+          disabled: frozen || isViewer(), title: frozen ? "Frozen horizon" : "" });
+        inp.addEventListener("change", async () => {
+          const raw = inp.value.trim(); const qty = raw === "" ? null : Number(raw);
+          const r = await API.put(`/api/demand/${encodeURIComponent(it.key)}/override`, { week: w, qty, reason: $("#reason").value || null });
+          if (!r.ok) { toast(r.data.error, "error"); inp.value = it.final[w]; return; }
+          toast(qty === null ? `Override cleared for ${it.sku} ${w}` : `Override saved for ${it.sku} ${w}`); load(); });
+        return el("td", {}, inp); }),
+      el("td", { testid: "total-final" }, String(it.total_final)));
+    tbody.append(stat, fin); });
+  $('[data-testid="grand-total"]').textContent = data.grand_total_final.toLocaleString("en-US");
+}
+if (shell("workbench")) (async () => {
+  META = (await API.get("/api/meta")).data;
+  META.weeks.forEach(w => $("#head").append(el("th", {}, w))); $("#head").append(el("th", {}, "Total"));
+  META.reason_codes.forEach(c => $("#reason").append(el("option", { value: c }, c)));
+  $('[data-testid="rules"]').textContent = `Frozen: ${META.frozen_weeks.join(", ")} · Reason code required above ±${META.reason_threshold_pct}%`;
+  $("#location").addEventListener("change", load); load();
+})();
+</script></body></html>
